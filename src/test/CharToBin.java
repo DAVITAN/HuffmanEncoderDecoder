@@ -18,6 +18,21 @@ public class CharToBin {
 		System.out.println(str);
 		*/
 		String str="";
+		String temp="";
+		while(temp.length()!=511){
+			temp+='0';
+		}
+		System.out.println(temp.length() + " length(int)");
+		int size=temp.length();
+		System.out.println((byte)8 + " length(char)");
+		int sized=size;
+		String treeStringSize=Integer.toBinaryString(temp.length());
+		while(treeStringSize.length()%8!=0) {treeStringSize+='0';}
+		if(treeStringSize.length()%8!=0) System.out.println("nope");
+		System.out.println("length fixed: "+treeStringSize);
+		String walla=Integer.toBinaryString(size);
+		System.out.println(walla + " length(binary)");
+
 		try {
 			InputStream in = new FileInputStream("c:\\data\\1.txt");
 			int data = in.read();
