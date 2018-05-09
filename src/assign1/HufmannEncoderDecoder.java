@@ -1,11 +1,16 @@
 package assign1;
+/*
+ * Data Compression - Assignment 1 - Huffman Compression
+ * Written By:
+ * Dor Avitan - 
+ * Omer Sirpad - 
+ * Omer Amsalem - 
+ */
 
-
-import java.io.FileInputStream;
+import java.io.DataOutputStream;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.Writer;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -26,299 +31,274 @@ import base.compressor;
 
 public class HufmannEncoderDecoder implements compressor
 {
-	
+
 	public HufmannEncoderDecoder()
 	{
-		
+
 	}
 	@Override
 	public void Compress(String[] input_names, String[] output_names)//o(nlogn)	
 	{
 		HuffmanNode root=null;
 		long startTime = System.currentTimeMillis();
-		System.out.println("starting..");//DEBUG
+		System.out.println("starting..");
 		Path path = Paths.get(input_names[0]);//Get path from 1st array slot
 		try
 		{
-			byte[] arr = Files.readAllBytes(path);//Use imported class to read bytes to an array
-			int freq[] = freqarr(arr);//Create new frequency array fro all possible bytes (255)
-			root = HuffmanNode.BuildTree(freq);//o(nlogn)
+			byte[] fileBytesArr = Files.readAllBytes(path);//Use imported class to read bytes to an array
 			
-			//Build the tree (recursive)
-			
-			long startTimeD=System.currentTimeMillis();
-			HashMap <Character,String > dictionary = new HashMap<Character,String>();
-			root.buildDictionary(dictionary,"");//o(nlogn)
-			long endTimeD=System.currentTimeMillis();
-			System.out.println("Building the Dictionary took " + ((endTimeD - startTimeD)/1000) + " seconds");
+			int freq[] = freqarr(fileBytesArr);//Create new frequency array for all possible bytes (255)
+			root = HuffmanNode.BuildTree(freq);//Build Huffman tree
+
+			//Build the dictionary
+			HashMap <Byte,String > dictionary = new HashMap<Byte,String>();
+			root.buildDictionary(dictionary,"");
 			
 			//write the coded version to string
-			long startTimeC=System.currentTimeMillis();
-			String code =codedString(arr, dictionary);
-			long endTimeC=System.currentTimeMillis();
-			System.out.println("Building the code string took " + ((endTimeC - startTimeC)/1000) + " seconds");
+			String code =codedString(fileBytesArr, dictionary);
 			
 			//actually write to the file
-			System.out.println("Code Length: " + code.length()); //DEBUG
 			
 			writeStringToFile(code, output_names,root);
 		}
 		catch (IOException e) {  e.printStackTrace();}
-		
+
 		long endTime = System.currentTimeMillis();
-		
-		System.out.println("Comp took " + ((endTime - startTime)/1000) + " seconds");
+
+		System.out.println("Compression took " + ((endTime - startTime)) + " miliseconds.\n");
 	}
 	
-	/*
-	 * @param byte array
-	 * @param HashMap
-	 * @return String
-	 * returns a string of the coded version of the file
-	 */
-	public String codedString(byte [] arr,HashMap <Character,String > dictionary)
+	public String codedString(byte [] fileBytesArr,HashMap<Byte, String> dictionary)
 	{
-		//String code = "";
+		
 		StringBuilder code=new StringBuilder();
 		String s="";
-		char c;
-		for (int j = 0; j < arr.length; j++)//o(n)
+		byte b;
+		for (int j = 0; j < fileBytesArr.length; j++)
 		{
-			c = (char)arr[j];
-			s = dictionary.get(c);//o(1) get the value of the letter and put into code
-			if (s == null)
-				s = dictionary.get((char)(c + 256));
-			//if (code == null)//will happen once
-				//code = s;
-			
-				code.append(s);
+			b=fileBytesArr[j];
+			s = dictionary.get(b);//get the value of the letter and put into code
+			code.append(s);
 		}
 		String retCode=code.toString();
 		return retCode;
-		
+
 	}
-	/*
-	 * @param: byte array
-	 * @return: int array
-	 * creates frequency array for all bytes
-	 */
-	public int[] freqarr(byte[] arr)
+
+	public int[] freqarr(byte[] fileBytesArr)
 	{
 		int freq[] = new int [256];
-		long startTimeF=System.currentTimeMillis();
-		//reads the file as bytes and count how many times the bite has appeared during the code
-		for (int i = 0; i < arr.length; i++)//o(n)
+		
+		//reads the file as bytes and count how many times the byte has appeared in the code
+		for (int i = 0; i < fileBytesArr.length; i++)
 		{
-			if (arr[i] < 0)
-				freq[arr[i]+256]++;
-			else
-				freq[(arr[i])] ++;
+			int place=(int) fileBytesArr[i];
+			if(place < 0) {
+				place+=256;}
+				freq[place] ++;
 		}
-		long endTimeF=System.currentTimeMillis();
-		System.out.println("Analyzing freq took: " + (endTimeF-startTimeF)/1000 + " seconds.");
 		return freq;
 	}
 
-	
+
 	public void writeStringToFile(String code, String[] output_names,HuffmanNode root)
 	{
-		int zeroCounter = 0;
-		System.out.println("code length: " + code.length());
-		while (code.length() % 8 != 0)
+
+		try
 		{
-			code += '0';
-			zeroCounter++;
-		}
-		 try
-		{
-		 FileOutputStream fos = new FileOutputStream(output_names[0]);
-		 String tstr="";
-		 fos.write((byte)zeroCounter);
-		 System.out.println("Code 0s: (before comp)" + zeroCounter);
-		 String treeString=root.writeTree(root,"");//Binary string of tree (1 - leaf, 0 - internal node)
-		 System.out.println("tree String (before): " + treeString);
-		 int treeStringSize0s=0;
-		 int treeString0s=0;
-		 String treeStringSize=Integer.toBinaryString(treeString.length());
-			while(treeStringSize.length()%8!=0) {
-				treeStringSize+='0';
-				treeStringSize0s++;
-			}
-			while(treeString.length()%8!=0) {
-				treeString+='0';
-				treeString0s++;
+			DataOutputStream fos = new DataOutputStream(new FileOutputStream(output_names[0]));
+			String tstr="";
+			
+			String treeString=root.writeTree(root,"");//characters string of tree (1 - leaf, 0 - internal node)
+			int treeStringLength=treeString.length();
+			
+			fos.writeInt(treeStringLength);//Writes 4 bytes
+			for(int i=0;i<treeStringLength;i++) fos.writeByte(treeString.charAt(i));//Writes the tree as bytes to the coded file
+			
+			
+			int zeroCounter = 0;
+			
+			while (code.length() % 8 != 0)//Pad the code string with 0s so we can read it as a byte 
+			{
+				code += '0';
+				zeroCounter++;
 			}
 			
-			fos.write((byte)(treeStringSize0s));//Number of 0s in the treeStringSize String
-			System.out.println("tree String Size (before comp): " + (int)Integer.parseInt(treeStringSize,2));
-			fos.write((byte)Integer.parseInt(treeStringSize.substring(0, 8),2));
-			fos.write((byte)Integer.parseInt(treeStringSize.substring(8, 16),2));
-			System.out.println("tree string 0s : (before comp) : " + treeString0s);
-			fos.write((byte)(treeString0s));//
-			code=treeString+code;
+			fos.write(zeroCounter);
 			
 			
-		 for(int i=0;i<code.length();i=i+8)//TODO
-		 {
-			tstr=code.substring(i, i+8);
-			int bin=Integer.parseInt(tstr,2);
-			
-			byte[] barr= {(byte)bin};
-				fos.write(barr);
+			for(int i=0;i<code.length();i=i+8)
+			{
+				tstr=code.substring(i, i+8);//Take blocks of 8 character of 1s and 0s
+				int bin=Integer.parseInt(tstr,2);//Parse the 8 chars to an int in binary format (radix 2)
+
+				byte barr= (byte)bin;
+				
+				fos.writeByte(barr);//write the byte to the file
 			}
-		 //Code: <zeroCounter(1byte)><treeStringSize0s(byte)><treeStringsize(2 bytes)><treeString0s(byte)><treeString (up to 511 bits)<code>
-		 
+			
+			fos.close();
 		}
-			catch(Exception e){e.printStackTrace();}
-		}
-	
+		catch(Exception e){e.printStackTrace();}
+	}
+
 	@Override
 	public void Decompress(String[] input_names, String[] output_names)
 	{
-		
-		long startTimed = System.currentTimeMillis();
-		System.out.println("starting Decompression");//DEBUG
-		StringBuilder binStr=new StringBuilder();//BinaryString
-		Queue<Character> binQ = new LinkedList<Character>();
-		try {
-			FileInputStream in = new FileInputStream(input_names[0]);
-			//TODO: add a way to read the tree
-			
-			System.out.println("hereEEEERERERRER");
-			int data = in.read();//Read characters from the coded file
 
-			int leftover0s=0;
-			leftover0s=data;//Find how many 0s we added		
-			System.out.println("code zeros after dec: " + leftover0s);
-			////////////////////////////////////////////////
-			data=in.read();
-			int TreeStringSize0s=data;
+		long startTimed = System.currentTimeMillis();
+		System.out.println("starting Decompression");
+		Path path = Paths.get(input_names[0]);//Get path from 1st array slot
+		try
+		{
+			byte[] fileBytesArr = Files.readAllBytes(path);//Use imported class to read bytes to an array
+			byte[] treeSizearr = {fileBytesArr[0],fileBytesArr[1],fileBytesArr[2],fileBytesArr[3]};//Size was written as Int (4 bytes), so need to combine back to int
+			ByteBuffer inr = ByteBuffer.wrap(treeSizearr);
+			int treeSize=inr.getInt();
 			
 			
-			data=in.read();
-			String tmp=Integer.toBinaryString(data);
-			if(tmp.length()<8) tmp=String.format("%8s", tmp).replace(' ', '0');
-			String treeStringSize=tmp;
-			data=in.read();
-			tmp=Integer.toBinaryString(data);
-			if(tmp.length()<8) tmp=String.format("%8s", tmp).replace(' ', '0');
-			treeStringSize+=tmp;
-			
-			treeStringSize=treeStringSize.substring(0,(treeStringSize.length()-TreeStringSize0s));
-			
-			int treeStringSizeInt=Integer.parseInt(treeStringSize, 2);
-			System.out.println("tree string size after dec: " + treeStringSizeInt);
-			
-			data=in.read();
-			int treeString0s=data;
-			String treeString="";
-			for(int i=0;i<treeStringSizeInt-treeString0s;i++){
-				data=in.read();
-				String tmp2=Integer.toBinaryString(data);
-				if(tmp2.length()<8) tmp2=String.format("%8s", tmp2).replace(' ', '0');
-				treeString+=tmp2;
+			Queue<Byte> treeQ = new LinkedList<Byte>();
+			for(int i=4;i<treeSize+4;i++){//Read bytes from after the size int (this is the tree size), and add to a Queue
+				treeQ.add(fileBytesArr[i]);
 			}
 			
-			//////////////////////////////////////////////////
-			while(data != -1) {
-				String temp=Integer.toBinaryString(data);
-				if(temp.length()<8) temp=String.format("%8s", temp).replace(' ', '0');
-				
-				binStr.append(temp);  
-				data = in.read();
-				}
-			in.close();
+			HuffmanNode root=HuffmanNode.ReBuildTree(treeQ);//recreating the tree
 			
-			//Breaking the metadata<5 bytes>
-			//Code: <zeroCounter(1byte)><treeStringSize0s(3bits)><treeStringsize(2 bytes)><treeString0s(byte)><treeString (up to 511 bits)<code>
-			String temp="";
+			int code0Padding=fileBytesArr[4+treeSize];//retrieve the number of 0s used to pad the code(right after the tree code).
 			
+			StringBuilder codeString=new StringBuilder();
+			for(int i=(4+treeSize+1);i<fileBytesArr.length;i++){//start reading the code (starting from after the tree size(4B),treeCode,0 Padding(1B)).
+				byte temp=fileBytesArr[i];
+				String tostring=Integer.toBinaryString((temp & 0xFF) + 0x100).substring(1); 
+				//This handles special chars (extended ASCII). it does an AND with 0xFF (converting it to a number 0-255) and the 0x100 and substring(1) makes sure there will be leading 0s.
+				codeString.append(tostring);
+			}
 			
-			Queue<Character> treeQ = new LinkedList<Character>();
-			int counter=0;
-			for(int i=0;i<treeString.length();i++){
-				counter++;
-				treeQ.add(treeString.charAt(i));}
+			DataOutputStream out = new DataOutputStream(new FileOutputStream(output_names[0]));
+			String codeString2=codeString.substring(0,codeString.length()-code0Padding).toString();//String witout padding 0s
 			
-			
-			//Build tree from string (inorder? traversal (node-left-right);
-			
-			HuffmanNode root=null;
-			root = HuffmanNode.ReBuildTree(treeQ);
-	//		System.out.println("dec code length : " + (binStr.length()-(30+treeStringSize)));
-			
-		      for(int i=32+treeString.length(); i<binStr.length()-leftover0s; i++){
-		          binQ.add(binStr.charAt(i));
-		       }
+			Queue<Character> binQ= new LinkedList<Character>();
+			for(int i=0;i<codeString2.length();i++){
+				binQ.add(codeString2.charAt(i)); // Adding code to a Queue for decoding
+			}
+			out.write((decode(binQ,root))); // decode and write as bytes
 		
-		
-		Writer writer;
-		
-			writer = new FileWriter(output_names[0]);
-			writer.write(decode(binQ,root));
-			writer.close();
-		} catch (IOException e) {
+			out.close();
+			
+		}catch (IOException e) {
 			e.printStackTrace();
-		}
+			}
 
-long endTimed = System.currentTimeMillis();
-		
-		System.out.println("Decomp took " + ((endTimed - startTimed)/1000) + " seconds");
-		
+		long endTimed = System.currentTimeMillis();
+
+		System.out.println("Decomp took " + ((endTimed - startTimed)) + " miliseconds \n");
+
 	}
+
+
 	
-
-	public String decode(Queue<Character> binQ,HuffmanNode root){
-		String decodedStr="";
-		System.out.println("Decoding...");
+	public byte[] decode(Queue<Character> binQ,HuffmanNode root){
+		/*Aux function in preparation for recursion. 
+		* Gets Queue and root node and decodes the coded file
+		*/
+		StringBuilder decodedStr=new StringBuilder();//TODO: Consider using byte array
 		while(!binQ.isEmpty()){
-			decodedStr=decodedStr + decodeRec(root,binQ);
+			decodedStr.append((char)decodeRec(root,binQ));
 		}
-		return decodedStr;
+		
+		
+			byte[] barr=new byte[decodedStr.length()];//Convert to byte array
+			for(int i=0;i<decodedStr.length();i++)
+			{
+				barr[i]=(byte)decodedStr.charAt(i);
+			}
+			return barr;
 	}
-	public char decodeRec(HuffmanNode root,Queue<Character> binQ){
+	public byte decodeRec(HuffmanNode root,Queue<Character> binQ){
+		//The recursive decoding function which traverses the tree
 		if(root.getLeft()==null && root.getRight()==null){
 			return root.get_char();
 		}
-		if(binQ.poll()=='0'){//PROBLEM: Gets to null
+		if(binQ.poll()=='0'){
 			return decodeRec(root.getLeft(),binQ);
 		}
-		
+
 		return decodeRec(root.getRight(),binQ);
 	}
 	@Override
-	public byte[] CompressWithArray(String[] input_names, String[] output_names)
-	{
-		long startTime = System.currentTimeMillis();
-		Path path = Paths.get(input_names[0]);
-			byte[] arr = null;
-			try
-			{
-				arr = Files.readAllBytes(path);
-			} 
-			catch (IOException e) {e.printStackTrace();}
-			int freq[] = freqarr(arr);
-			HuffmanNode root = HuffmanNode.BuildTree(freq);//o(nlogn)
+	public byte[] CompressWithArray(String[] input_names, String[] output_names) {
+		HuffmanNode root=null;
+		System.out.println("starting..");
+		Path path = Paths.get(input_names[0]);//Get path from 1st array slot
+		try
+		{
+			byte[] fileBytesArr = Files.readAllBytes(path);//Use imported class to read bytes to an array
 			
-			HashMap <Character,String > dictionary = new HashMap<Character,String>();
-			
-			root.buildDictionary(dictionary,"");//o(nlogn)
+			int freq[] = freqarr(fileBytesArr);//Create new frequency array for all possible bytes (255)
+			root = HuffmanNode.BuildTree(freq);//Build Huffman tree
+
+			//Build the dictionary
+			HashMap <Byte,String > dictionary = new HashMap<Byte,String>();
+			root.buildDictionary(dictionary,"");
 			
 			//write the coded version to string
-			String code =codedString(arr, dictionary);
+			String code =codedString(fileBytesArr, dictionary);
 			
 			//actually write to the file
+			
 			writeStringToFile(code, output_names,root);
-		long endTime = System.currentTimeMillis();
-
-		System.out.println("That took " + ((endTime - startTime)/1000) + " seconds");
-		return (code.getBytes());
+			return code.getBytes();
+		}
+		catch (IOException e) {  e.printStackTrace();
+		return null;}
+		
 	}
-
 	@Override
-	public byte[] DecompressWithArray(String[] input_names, String[] output_names)
-	{
-		return null;
+	public byte[] DecompressWithArray(String[] input_names, String[] output_names) {
+
+		System.out.println("starting Decompression");
+		Path path = Paths.get(input_names[0]);//Get path from 1st array slot
+		try
+		{
+			byte[] fileBytesArr = Files.readAllBytes(path);//Use imported class to read bytes to an array
+			byte[] treeSizearr = {fileBytesArr[0],fileBytesArr[1],fileBytesArr[2],fileBytesArr[3]};//Size was written as Int (4 bytes), so need to combine back to int
+			ByteBuffer inr = ByteBuffer.wrap(treeSizearr);
+			int treeSize=inr.getInt();
+			
+			
+			Queue<Byte> treeQ = new LinkedList<Byte>();
+			for(int i=4;i<treeSize+4;i++){//Read bytes from after the size int (this is the tree size), and add to a Queue
+				treeQ.add(fileBytesArr[i]);
+			}
+			
+			HuffmanNode root=HuffmanNode.ReBuildTree(treeQ);//recreating the tree
+			
+			int code0Padding=fileBytesArr[4+treeSize];//retrieve the number of 0s used to pad the code(right after the tree code).
+			
+			StringBuilder codeString=new StringBuilder();
+			for(int i=(4+treeSize+1);i<fileBytesArr.length;i++){//start reading the code (starting from after the tree size(4B),treeCode,0 Padding(1B)).
+				byte temp=fileBytesArr[i];
+				String tostring=Integer.toBinaryString((temp & 0xFF) + 0x100).substring(1); 
+				//This handles special chars (extended ASCII). it does an AND with 0xFF (converting it to a number 0-255) and the 0x100 and substring(1) makes sure there will be leading 0s.
+				codeString.append(tostring);
+			}
+			
+			DataOutputStream out = new DataOutputStream(new FileOutputStream(output_names[0]));
+			String codeString2=codeString.substring(0,codeString.length()-code0Padding).toString();//String witout padding 0s
+			
+			Queue<Character> binQ= new LinkedList<Character>();
+			for(int i=0;i<codeString2.length();i++){
+				binQ.add(codeString2.charAt(i)); // Adding code to a Queue for decoding
+			}
+			byte[] barr = decode(binQ,root);
+			out.write(barr); // decode and write as bytes
+		
+			out.close();
+			return barr;
+		}catch (IOException e) {
+			e.printStackTrace();
+			return null;
+			}
 	}
 
 }

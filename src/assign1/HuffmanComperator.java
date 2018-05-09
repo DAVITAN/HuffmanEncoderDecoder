@@ -1,7 +1,13 @@
 package assign1;
 
 import java.util.Comparator;
-
+/*
+ * Data Compression - Assignment 1 - Huffman Compression
+ * Written By:
+ * Dor Avitan - 
+ * Omer Sirpad - 
+ * Omer Amsalem - 
+ */
 public class HuffmanComperator implements Comparator<HuffmanNode> {
 
 	@Override
